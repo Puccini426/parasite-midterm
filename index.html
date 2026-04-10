@@ -209,6 +209,80 @@
   .btn-action:active { transform: scale(0.97); }
   .btn-action.primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #111; }
   .btn-action.secondary { background: var(--surface2); color: var(--text); }
+
+  /* ── 篩選抽屜 ── */
+  .filter-toggle-row {
+    width: 100%; max-width: 480px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .btn-filter-toggle {
+    display: flex; align-items: center; gap: 6px;
+    background: none; border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 99px; padding: 5px 14px;
+    color: var(--muted); font-size: 12px; font-weight: 700;
+    font-family: inherit; cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-filter-toggle:hover { border-color: rgba(232,200,74,0.35); color: var(--accent); }
+  .btn-filter-toggle.active { border-color: rgba(232,200,74,0.5); color: var(--accent); }
+  .btn-filter-toggle .arrow {
+    display: inline-block; transition: transform 0.25s;
+    font-style: normal; font-size: 10px;
+  }
+  .btn-filter-toggle.active .arrow { transform: rotate(180deg); }
+  .filter-badge-inline {
+    font-size: 11px; color: var(--muted);
+  }
+  .filter-badge-inline b { color: var(--accent); }
+
+  .filter-drawer {
+    width: 100%; max-width: 480px;
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+  }
+  .filter-drawer.open {
+    max-height: 200px;
+    opacity: 1;
+  }
+  .filter-drawer-inner {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 10px 0 4px;
+  }
+  .filter-row { display: flex; gap: 8px; }
+  .filter-row select, .filter-row input {
+    flex: 1; min-width: 0;
+    padding: 9px 12px;
+    background: var(--surface2);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 13px; font-family: inherit;
+    outline: none;
+  }
+  .filter-row select:focus, .filter-row input:focus {
+    border-color: rgba(232,200,74,0.4);
+  }
+  .filter-row input::placeholder { color: var(--muted); }
+  .filter-actions { display: flex; gap: 8px; }
+  .btn-filter-apply {
+    flex: 2; padding: 9px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #111; font-weight: 900; font-size: 13px; font-family: inherit;
+    border: none; border-radius: 10px; cursor: pointer;
+    transition: transform 0.12s;
+  }
+  .btn-filter-apply:active { transform: scale(0.96); }
+  .btn-filter-reset {
+    flex: 1; padding: 9px;
+    background: var(--surface2); color: var(--muted);
+    font-size: 13px; font-family: inherit; font-weight: 700;
+    border: none; border-radius: 10px; cursor: pointer;
+    transition: transform 0.12s;
+  }
+  .btn-filter-reset:active { transform: scale(0.96); }
+
 </style>
 </head>
 <body>
@@ -305,6 +379,7 @@
   <div><b>v2.1</b> — 卡牌可以重複翻動，點擊已翻面的牌可翻回正面。</div>
   <div style="margin-top:4px;"><b>資料修正</b> — <i>Leishmania donovani</i> epimastigote 圖已更正為 <b>promastigote</b>。</div>
   <div style="margin-top:4px;"><b>新增</b> — 進度保存：關閉頁面後重新開啟，會從上次的地方繼續（同裝置同瀏覽器）。</div>
+  <div style="margin-top:4px;"><b>新增</b> — 篩選練習：可以單獨練習特定蟲種，不影響主進度，練完後按「回到主進度」繼續。</div>
   <div style="text-align:right; font-size:11px; color:#8a8a9a; margin-top:6px;">— by 俠夫</div>
   <button onclick="document.getElementById('patch-banner').style.display='none'"
     style="position:absolute;top:8px;right:10px;background:none;border:none;color:#8a8a9a;font-size:16px;cursor:pointer;line-height:1;">×</button>
@@ -327,6 +402,7 @@
 </div>
 
 <div id="phase-badge" class="phase-badge">第一輪</div>
+
 
 <div class="card-scene" id="card-scene">
   <div class="swipe-hint-left"  id="hint-left">✗</div>
@@ -357,6 +433,30 @@
   <button class="btn btn-right" onclick="judge(true)">✓ 會</button>
 </div>
 
+<div class="filter-toggle-row" id="filter-section">
+  <button class="btn-filter-toggle" id="filter-toggle-btn" onclick="toggleFilterDrawer()">
+    ⚗ 篩選練習 <i class="arrow">▼</i>
+  </button>
+  <span class="filter-badge-inline" id="filter-badge"></span>
+</div>
+
+<div class="filter-drawer" id="filter-drawer">
+  <div class="filter-drawer-inner">
+    <div class="filter-row">
+      <select id="form-filter">
+        <option value="all">全部蟲種</option>
+      </select>
+      <input id="name-filter" type="text" placeholder="搜尋蟲名或型態…">
+    </div>
+    <div class="filter-actions">
+      <button class="btn-filter-apply" onclick="applyFilters()">套用篩選</button>
+      <button class="btn-filter-reset" onclick="resetFilters()">清除</button>
+    </div>
+  </div>
+</div>
+
+
+
 <div id="finish-screen">
   <h2 id="finish-title">✅ 第一輪完成！</h2>
   <div class="finish-stats">
@@ -367,6 +467,7 @@
   <button class="btn-action primary"   id="btn-review"         onclick="startReview()"   style="display:none">複習錯題</button>
   <button class="btn-action primary"   id="btn-restart-all"    onclick="restartAll()"    style="display:none">重新開始（洗牌）</button>
   <button class="btn-action secondary" id="btn-restart-review" onclick="restartReview()" style="display:none">再刷一次錯題</button>
+  <button class="btn-action secondary" id="btn-back-main" onclick="backToMain()" style="display:none">← 回到主進度</button>
 </div>
 
 <script>
@@ -378,6 +479,12 @@ let isFlipped = false, isReviewMode = false;
 let dragDeltaX = 0;
 
 const SAVE_KEY = 'parasite_progress_v1';
+let filteredPool = [...ALL_CARDS]; // 篩選後的題庫
+let isFilterMode  = false;
+let filterQueue   = [];
+let filterIdx     = 0;
+let filterGood    = 0;
+let filterBad     = 0;
 
 function saveProgress() {
   try {
@@ -430,6 +537,7 @@ function parseAnswer(raw) {
 }
 
 function loadCard() {
+  if (isFilterMode) { loadFilterCard(); return; }
   if (queue.length === 0) { showFinish(); return; }
   const data = queue[0];
   const {name, form} = parseAnswer(data.answer);
@@ -487,6 +595,7 @@ function toggleFlip() {
 }
 
 function judge(correct) {
+  if (isFilterMode) { filterJudge(correct); return; }
   const card = queue.shift();
   if (correct) { goodCount++; if (!isReviewMode) totalGood++; }
   else         { badCount++;  if (!isReviewMode) totalBad++;  wrongCards.push(card); }
@@ -598,6 +707,10 @@ function restartReview() {
 
 function restartAll() {
   clearProgress();
+  filteredPool = [...ALL_CARDS];
+  document.getElementById('form-filter').value = 'all';
+  document.getElementById('name-filter').value = '';
+  document.getElementById('filter-badge').innerHTML = '';
   isReviewMode=false; queue=shuffle([...ALL_CARDS]); wrongCards=[];
   goodCount=0; badCount=0; totalGood=0; totalBad=0;
   document.getElementById('phase-badge').textContent='第一輪';
@@ -615,11 +728,188 @@ document.addEventListener('keydown', e => {
   else if (e.code==='ArrowRight' &&  isFlipped)   judge(true);
 });
 
+
+
+function toggleFilterDrawer() {
+  const drawer = document.getElementById('filter-drawer');
+  const btn    = document.getElementById('filter-toggle-btn');
+  const isOpen = drawer.classList.contains('open');
+  drawer.classList.toggle('open', !isOpen);
+  btn.classList.toggle('active', !isOpen);
+}
+function updateFilterStatus(isFinished = false) {
+  const total = filteredPool.length;
+  const done = isFinished ? total : (total - filterQueue.length);
+  document.getElementById('prog-fill').style.width =
+    (total > 0 ? (done / total) * 100 : 0) + '%';
+  document.getElementById('count-label').textContent =
+    `${done} / ${total} (篩選)`;
+}
+
+function loadFilterCard() {
+  if (filterQueue.length === 0) {
+    showFilterFinish();
+    return;
+  }
+  const data = filterQueue[0];
+  const {name, form} = parseAnswer(data.answer);
+  const card = document.getElementById('the-card');
+  card.style.transition = 'none';
+  card.style.transform  = '';
+  card.style.opacity    = '';
+  card.classList.remove('flipped');
+  void card.offsetWidth;
+  card.style.transition = '';
+  document.getElementById('card-img').src = data.image;
+  document.getElementById('card-bug').textContent  = name;
+  document.getElementById('card-form').textContent = form;
+  document.getElementById('hint-left').style.opacity  = 0;
+  document.getElementById('hint-right').style.opacity = 0;
+  isFlipped = false;
+  showFlipBtn();
+  updateFilterStatus(false);
+}
+
+function filterJudge(correct) {
+  if (correct) filterGood++; else filterBad++;
+  filterQueue.shift();
+  const el = document.getElementById('the-card');
+  el.style.transition = 'transform 0.22s ease-in, opacity 0.22s';
+  el.style.transform  = correct ? 'translateX(120%) rotateZ(15deg)' : 'translateX(-120%) rotateZ(-15deg)';
+  el.style.opacity    = '0';
+  setTimeout(() => {
+    el.style.transition = '';
+    el.style.transform  = '';
+    el.style.opacity    = '';
+    loadFilterCard();
+  }, 230);
+}
+
+function showFilterFinish() {
+  updateFilterStatus(true);
+  document.getElementById('card-scene').style.display    = 'none';
+  document.getElementById('flip-controls').style.display = 'none';
+  document.getElementById('judge-controls').classList.remove('visible');
+  document.getElementById('finish-title').textContent = '✅ 篩選練習完成！';
+  document.getElementById('finish-msg').textContent   = '這組題目刷完了，可以回到主進度繼續。';
+  document.getElementById('fs-good').textContent = filterGood;
+  document.getElementById('fs-bad').textContent  = filterBad;
+  document.getElementById('btn-review').style.display         = 'none';
+  document.getElementById('btn-restart-all').style.display    = 'none';
+  document.getElementById('btn-restart-review').style.display = 'none';
+  document.getElementById('btn-back-main').style.display      = '';
+  document.getElementById('finish-screen').style.display      = 'flex';
+}
+
+function backToMain() {
+  isFilterMode = false;
+  filterQueue  = [];
+  // 恢復 UI
+  document.getElementById('btn-back-main').style.display  = 'none';
+  document.getElementById('filter-section').style.display = '';
+  document.getElementById('stat-total').style.opacity = '';
+  document.getElementById('stat-good').style.opacity  = '';
+  document.getElementById('stat-bad').style.opacity   = '';
+  document.getElementById('filter-badge').innerHTML   = '';
+  document.getElementById('form-filter').value        = 'all';
+  document.getElementById('name-filter').value        = '';
+  filteredPool = [...ALL_CARDS];
+  // 恢復 phase badge
+  const pb = document.getElementById('phase-badge');
+  pb.style.background = '';
+  pb.style.color      = '';
+  pb.textContent = isReviewMode ? '複習錯題' : '第一輪';
+  if (isReviewMode) pb.classList.add('review');
+  else              pb.classList.remove('review');
+  // 恢復主進度
+  document.getElementById('btn-back-main').style.display = 'none';
+  document.getElementById('finish-screen').style.display = 'none';
+  document.getElementById('card-scene').style.display    = '';
+  document.getElementById('flip-controls').style.display = '';
+  loadCard();
+}
+
+function buildFormOptions() {
+  const select = document.getElementById('form-filter');
+  const forms = [...new Set(ALL_CARDS.map(c => {
+    const p = c.answer.split('|');
+    return (p[1] || '').replace(/^\(|\)$/g, '');
+  }).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+  for (const f of forms) {
+    const opt = document.createElement('option');
+    opt.value = f; opt.textContent = f;
+    select.appendChild(opt);
+  }
+}
+
+function updateFilterBadge() {
+  const sel = document.getElementById('form-filter').value;
+  const kw  = document.getElementById('name-filter').value.trim();
+  const badge = document.getElementById('filter-badge');
+  if (sel === 'all' && !kw) {
+    badge.innerHTML = '';
+  } else {
+    badge.innerHTML = `篩選中：<b>${filteredPool.length} 題</b>`;
+  }
+}
+
+function applyFilters() {
+  const sel = document.getElementById('form-filter').value;
+  const kw  = document.getElementById('name-filter').value.trim().toLowerCase();
+  filteredPool = ALL_CARDS.filter(c => {
+    const {name, form} = parseAnswer(c.answer);
+    const matchForm = sel === 'all' || form === sel;
+    const matchName = !kw || name.toLowerCase().includes(kw) || form.toLowerCase().includes(kw);
+    return matchForm && matchName;
+  });
+  if (filteredPool.length === 0) {
+    alert('沒有符合的題目，請調整篩選條件');
+    return;
+  }
+  updateFilterBadge();
+  document.getElementById('filter-drawer').classList.remove('open');
+  document.getElementById('filter-toggle-btn').classList.remove('active');
+  // 儲存主進度快照（讓 backToMain 可以恢復）
+  saveProgress();
+  // 進入篩選模式（不動 localStorage 主進度）
+  isFilterMode = true;
+  filterQueue  = shuffle([...filteredPool]);
+  filterGood   = 0;
+  filterBad    = 0;
+  document.getElementById('btn-back-main').style.display = 'none';
+  document.getElementById('phase-badge').textContent = '篩選練習';
+  document.getElementById('phase-badge').classList.remove('review');
+  document.getElementById('phase-badge').style.background = 'rgba(80,192,144,0.12)';
+  document.getElementById('phase-badge').style.color = 'var(--success)';
+  // 隱藏主進度條，顯示篩選進度
+  document.getElementById('filter-section').style.display = 'none';
+  document.getElementById('btn-back-main').style.display = '';
+  document.getElementById('stat-total').style.opacity = '0.3';
+  document.getElementById('stat-good').style.opacity  = '0.3';
+  document.getElementById('stat-bad').style.opacity   = '0.3';
+  document.getElementById('btn-back-main').style.display = 'none';
+  document.getElementById('finish-screen').style.display = 'none';
+  document.getElementById('card-scene').style.display = '';
+  document.getElementById('flip-controls').style.display = '';
+  loadFilterCard();
+}
+
+function resetFilters() {
+  document.getElementById('form-filter').value = 'all';
+  document.getElementById('name-filter').value = '';
+  filteredPool = [...ALL_CARDS];
+  document.getElementById('filter-badge').innerHTML = '';
+  document.getElementById('filter-drawer').classList.remove('open');
+  document.getElementById('filter-toggle-btn').classList.remove('active');
+  applyFilters();
+}
+
 window.onload = () => {
   if (ALL_CARDS.length===0) {
     document.getElementById('subtitle').textContent='⚠️ 沒有讀取到任何卡片';
     return;
   }
+  buildFormOptions();
   const resumed = loadProgress();
   if (resumed) {
     // 恢復存檔：更新 phase badge 然後載入
